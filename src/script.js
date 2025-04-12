@@ -37,11 +37,14 @@ function preload() {
     this.load.spritesheet('cat_jump','assets/cat_white_jump.png',{frameWidth:130,frameHeight:95});
 
     //end asset cat
-    this.load.image
+  
 
 }
 
 let cursors;
+let player;
+let plataform;
+
 function create() {
 
     //debug
@@ -84,7 +87,7 @@ function create() {
     this.anims.create({
         key: 'jump',
         frames: this.anims.generateFrameNumbers('cat_jump', { start: 0, end: 2 }),
-        frameRate: 20,  
+        frameRate: 95,  
         repeat: 0,
        
     });
@@ -105,7 +108,7 @@ function create() {
  
     
     this.physics.add.collider(player, plataform);
-    player.body.setGravity(300);
+
 
     //entrada de teclas
     cursors = this.input.keyboard.createCursorKeys();
@@ -130,7 +133,7 @@ function create() {
         width: 30,      // Ancho de la hitbox
         height: 60,     // Alto de la hitbox
         offsetRight: 30, // Offset cuando mira a la derecha
-        offsetLeft: 67,  // Offset cuando mira a la izquierda (ajustado)
+        offsetLeft: 75,  // Offset cuando mira a la izquierda (ajustado)
         offsetY: 35      // Offset vertical (igual para ambas direcciones)
     };
     
@@ -146,19 +149,22 @@ function create() {
             flip ? hitboxConfig.offsetLeft : hitboxConfig.offsetRight,
             hitboxConfig.offsetY
         );
-        
-        // Debug visual (opcional)
-        console.log(`Hitbox - X: ${this.body.offset.x}, Y: ${this.body.offset.y}`);
     };
-    
+
  
 
         // Cambia el tamaño de la hitbox del jugador
      
     player.body.setMaxVelocity(300, 500); // Límites de velocidad
     // En create():
+    player.body.setSize(30, 60); // Cambia el tamaño de la hitbox
+    player.body.setOffset(30, 35); // Cambia el offset de la hitbox
+ // Gravedad más consistente
+player.setVelocityX(0);
+player.setDragX(500);
+player.body.setGravityY(350);
 
-player.body.setGravityY(350); // Gravedad más consistente
+
 }
 
 player.enAire = false;
@@ -190,8 +196,9 @@ function update() {
     if (cursors.up.isDown && isOnFloor && !isLanding) {
         player.setVelocityY(-350);
         player.anims.play('jump', true);
+        wasInAir = true
     }
-
+    
     // Lógica de animaciones
     if (!isOnFloor) {
         wasInAir = true;
@@ -210,18 +217,20 @@ function update() {
             wasInAir = false;
             isLanding = true;
 
-            player.anims.play('touchDown', true);
-
-            player.once('animationcomplete-touchDown', () => {
-                isLanding = false;
-
-                if (player.body.velocity.x === 0) {
-                    player.anims.play('stay', true);
-                } else {
-                    player.anims.play('run', true);
-                }
-            });
-
+            if (player.anims.currentAnim?.key !== 'touchDown') {
+                player.anims.play('touchDown', true);
+            
+                player.once('animationcomplete-touchDown', () => {
+                    isLanding = false;
+            
+                    if (player.body.velocity.x === 0) {
+                        player.anims.play('stay', true);
+                    } else {
+                        player.anims.play('run', true);
+                    }
+                });
+            }
+            
         } else if (!isLanding) {
       
             if (player.body.velocity.x === 0 && player.anims.currentAnim?.key !== 'stay') {
@@ -231,5 +240,5 @@ function update() {
             }
         }
     }
-    player.setDragX(800); // Fricción 
+    //player.setDragX(800); // Fricción 
 }
