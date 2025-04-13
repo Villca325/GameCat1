@@ -45,10 +45,32 @@ let cursors;
 let player;
 let plataform;
 
-function create() {
+//implementacion de raycast
+let rayGraphics;
+let lastGroundTime = 0;
+let groundCache = false;
+const CACHE_VALID_TIME = 100; // ms
 
+//configuracion de rayos
+
+const rayConfig = {
+    length: 4,
+    count: 3,
+    spread: 4,
+    color: 0xff0000,
+    hitColor: 0x00ff00,
+    thickness: 1,
+    enabled: true,
+    offsetX: -15, // Ajuste horizontal para compensar el flip
+    offsetY: 1  // Ajuste vertical
+};
+const startY = player.body.bottom;
+function create() {
+    rayGraphics = this.add.graphics();
     //debug
     this.physics.world.createDebugGraphic();
+
+
     this.add.image(300, 300, 'sky').setScale(2);
  
 
@@ -66,7 +88,7 @@ function create() {
     player = this.physics.add.sprite(100, 450, 'cat_idle').setScale(0.5);
     player.setCollideWorldBounds(true);
 
-
+   
     //animations
 
     this.anims.create({
@@ -130,10 +152,10 @@ function create() {
 
        // hitbox
        const hitboxConfig = {
-        width: 30,      // Ancho de la hitbox
+        width: 15,      // Ancho de la hitbox
         height: 60,     // Alto de la hitbox
-        offsetRight: 30, // Offset cuando mira a la derecha
-        offsetLeft: 75,  // Offset cuando mira a la izquierda (ajustado)
+        offsetRight: 40, // Offset cuando mira a la derecha
+        offsetLeft: 80,  // Offset cuando mira a la izquierda (ajustado)
         offsetY: 35      // Offset vertical (igual para ambas direcciones)
     };
     
@@ -157,19 +179,31 @@ function create() {
      
     player.body.setMaxVelocity(300, 500); // Límites de velocidad
     // En create():
-    player.body.setSize(30, 60); // Cambia el tamaño de la hitbox
-    player.body.setOffset(30, 35); // Cambia el offset de la hitbox
- // Gravedad más consistente
+   
 player.setVelocityX(0);
 player.setDragX(500);
 player.body.setGravityY(350);
 
+rayGraphics = this.add.graphics();
+this.input.keyboard.on('keydown-D', function() {
+    rayConfig.enabled = !rayConfig.enabled;
+    if (!rayConfig.enabled) rayGraphics.clear();
+});
 
+console.log(player.body.velocity.x);
+console.log(player.body.velocity.y);
 }
 
 player.enAire = false;
 function update() {
-    const isOnFloor = player.body.blocked.down || player.body.touching.down;
+
+ 
+    drawRays();
+   
+    
+    const isOnFloor = checkGroundWithRays() || player.body.blocked.down;
+
+
     const acceleration = 800;
     const maxSpeed = 300;
 
@@ -193,7 +227,7 @@ function update() {
     }
 
     // Salto
-    if (cursors.up.isDown && isOnFloor && !isLanding) {
+    if (cursors.up.isDown && isOnFloor && !isLanding && Math.abs(player.body.velocity.y)<5 ) {
         player.setVelocityY(-350);
         player.anims.play('jump', true);
         wasInAir = true
@@ -222,14 +256,12 @@ function update() {
             
                 player.once('animationcomplete-touchDown', () => {
                     isLanding = false;
-            
-                    if (player.body.velocity.x === 0) {
-                        player.anims.play('stay', true);
-                    } else {
-                        player.anims.play('run', true);
-                    }
+                updateIdleRunAnimation();
                 });
+            } else if (!isLanding) {
+                updateIdleRunAnimation();
             }
+            
             
         } else if (!isLanding) {
       
@@ -240,5 +272,75 @@ function update() {
             }
         }
     }
+
+    //preguntar por los ray
+
+    
     //player.setDragX(800); // Fricción 
+}
+
+
+function checkGroundWithRays() {
+    const startX = player.x - (rayConfig.spread * (rayConfig.count - 1)) / 2;
+    
+    for (let i = 0; i < rayConfig.count; i++) {
+        const rayX = startX + i * rayConfig.spread;
+        const rayStart = new Phaser.Math.Vector2(rayX, player.y + player.displayHeight / 2);
+        const rayEnd = new Phaser.Math.Vector2(rayX, player.y + player.displayHeight / 2 + rayConfig.length);
+        
+        const ray = new Phaser.Geom.Line(rayStart.x, rayStart.y, rayEnd.x, rayEnd.y);
+        const platforms = plataform.getChildren();
+        
+        for (let platform of platforms) {
+            if (Phaser.Geom.Intersects.LineToRectangle(ray, platform.getBounds())) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function updateIdleRunAnimation() {
+    if (player.body.velocity.x === 0) {
+        player.anims.play('stay', true);
+    } else {
+        player.anims.play('run', true);
+    }
+}
+
+
+function drawRays() {
+    if (!rayConfig.enabled) return;
+    
+    rayGraphics.clear();
+    
+    // Calcular posición base considerando el flip
+    const startX = player.x + (player.flipX ? -rayConfig.offsetX : rayConfig.offsetX);
+    const startY = player.y + rayConfig.offsetY;
+    
+    // Ajustar dirección de los rayos según flip
+    const spreadDirection = player.flipX ? -1 : 1;
+    
+    for (let i = 0; i < rayConfig.count; i++) {
+        const rayX = startX + (i * rayConfig.spread * spreadDirection);
+        const rayEndY = startY + rayConfig.length;
+        
+        // Verificar colisión
+        const ray = new Phaser.Geom.Line(rayX, startY, rayX, rayEndY);
+        let hitDetected = false;
+        
+        plataform.getChildren().forEach(platform => {
+            if (Phaser.Geom.Intersects.LineToRectangle(ray, platform.getBounds())) {
+                hitDetected = true;
+            }
+        });
+        
+        // Dibujar rayo
+        rayGraphics.lineStyle(rayConfig.thickness, hitDetected ? rayConfig.hitColor : rayConfig.color);
+        rayGraphics.lineBetween(rayX, startY, rayX, rayEndY);
+        
+        // Dibujar puntos de inicio/fin
+        rayGraphics.fillStyle(hitDetected ? rayConfig.hitColor : rayConfig.color, 0.5);
+        rayGraphics.fillCircle(rayX, startY, 3);
+        rayGraphics.fillCircle(rayX, rayEndY, 2);
+    }
 }
