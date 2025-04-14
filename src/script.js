@@ -28,6 +28,9 @@ let wasFalling = false;
 let lastLandingTime = 0;
 const landingCooldown = 300; // ms entre animaciones de aterrizaje
 
+let stableGroundTime = 0;
+const STABLE_GROUND_THRESHOLD = 100; // ms que debe estar estable en el suelo
+let lastVelocityY = 0;
 
 let isLanding = false;
 let wasInAir = false;
@@ -54,18 +57,7 @@ let plataform;
 
 function create() {
 
-    //debug
-    this.physics.world.createDebugGraphic();
-    debugText = this.add.text(10, 10, '', { 
-        font: '16px Arial', 
-        fill: '#ffffff',
-        backgroundColor: '#000000'
-    }).setScrollFactor(0);
-    
-    // Tecla para toggle debug (D)
-    this.input.keyboard.on('keydown-D', () => {
-        debugText.visible = !debugText.visible;
-    });
+
 
 
     this.add.image(300, 300, 'sky').setScale(2);
@@ -184,6 +176,19 @@ player.setDragX(500);
 player.body.setGravityY(350);
 
 
+    //debug
+    this.physics.world.createDebugGraphic();
+    debugText = this.add.text(10, 10, '', { 
+        font: '16px Arial', 
+        fill: '#ffffff',
+        backgroundColor: '#000000'
+    }).setScrollFactor(0);
+    
+    // Tecla para toggle debug (D)
+    this.input.keyboard.on('keydown-D', () => {
+        debugText.visible = !debugText.visible;
+    });
+
 }
 
 player.enAire = false;
@@ -191,7 +196,7 @@ function update() {
 
     updateDebugInfo();//debug
 
-    const isOnFloor = player.body.blocked.down || player.body.touching.down;
+    const isOnFloor = checkStableGround();
     const acceleration = 800;
     const maxSpeed = 300;
 
@@ -200,7 +205,6 @@ function update() {
   if (!isOnFloor && player.body.velocity.y > minFallVelocity) {
     wasFalling = true;
 }
-
     // Movimiento horizontal
     if (cursors.left.isDown) {
         player.setAccelerationX(-acceleration);
@@ -230,7 +234,7 @@ function update() {
     // Lógica de animaciones
     if (!isOnFloor) {
         wasInAir = true;
-
+        stableGroundTime = 0;
         if (!isLanding) {
             if (player.body.velocity.y < 0 && player.anims.currentAnim?.key !== 'jump') {
                 player.anims.play('jump', true);
@@ -240,45 +244,55 @@ function update() {
         }
 
     } else {
-        if (isOnFloor && wasFalling && !isLanding && 
-            this.time.now - lastLandingTime > landingCooldown) {
-            
-            // Solo reproducir touchDown si veníamos de una caída con velocidad suficiente
-            if (player.anims.currentAnim?.key !== 'touchDown') {
-                wasFalling = false;
-                isLanding = true;
-                lastLandingTime = this.time.now;
-                
-                player.anims.play('touchDown', true);
-                player.once('animationcomplete-touchDown', () => {
-                    isLanding = false;
-                    updateIdleRunAnimation();
-                });
-            }
-        } else if (!isLanding) {
-      
-            if (player.body.velocity.x === 0 && player.anims.currentAnim?.key !== 'stay') {
-                player.anims.play('stay', true);
-            } else if (player.body.velocity.x !== 0 && player.anims.currentAnim?.key !== 'run') {
-                player.anims.play('run', true);
-            }
-        }
+       // Lógica de aterrizaje solo si veníamos de una caída significativa
+       if (wasFalling && !isLanding && this.time.now - lastLandingTime > landingCooldown) {
+        wasFalling = false;
+        isLanding = true;
+        lastLandingTime = this.time.now;
+        
+        player.anims.play('touchDown', true);
+        player.once('animationcomplete-touchDown', () => {
+            isLanding = false;
+            updateIdleRunAnimation();
+        });
     }
-    //player.setDragX(800); // Fricción 
+    // Transición a animaciones terrestres solo si estamos estables
+    else if (!isLanding && stableGroundTime > STABLE_GROUND_THRESHOLD) {
+        updateIdleRunAnimation();
+    }
+}
 }
 
 
+function checkStableGround() {
+    const currentFloorCheck = player.body.blocked.down || player.body.touching.down;
+    
+    // Solo consideramos que está en suelo si se mantiene por varios frames
+    if (currentFloorCheck) {
+        stableGroundTime += this.game.loop.delta;
+        if (stableGroundTime > STABLE_GROUND_THRESHOLD) {
+            return true;
+        }
+    } else {
+        stableGroundTime = 0;
+    }
+    
+    return false;
+}
 function updateDebugInfo() {
+    const velocityChange = player.body.velocity.y - lastVelocityY;
+    lastVelocityY = player.body.velocity.y;
+    
     debugText.setText([
         `Debug Mode (D para toggle)`,
         `Velocidad Y: ${player.body.velocity.y.toFixed(1)}`,
+        `Cambio Y/frame: ${velocityChange.toFixed(1)}`,
         `Umbral caída: ${minFallVelocity}`,
-        `Estado: ${wasFalling ? 'CAYENDO' : (isLanding ? 'ATERRIZANDO' : 'ESTABLE')}`,
+        `Estado: ${wasFalling ? 'CAYENDO' : (isLanding ? 'ATERRIZANDO' : 
+            stableGroundTime > STABLE_GROUND_THRESHOLD ? 'SUELO_FIRME' : 'SUELO_INESTABLE')}`,
+        `Tiempo estable: ${stableGroundTime.toFixed(0)}ms`,
         `Animación actual: ${player.anims.currentAnim?.key || 'NINGUNA'}`
     ]);
-    
-    // Cambiar umbral dinámicamente con teclas (+/-)
-   
 }
 function updateIdleRunAnimation() {
     if (player.body.velocity.x === 0) {
