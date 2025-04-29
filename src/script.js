@@ -23,13 +23,14 @@ var config = {
 
 // Variables para touchdown
 let debugText;
-let minFallVelocity = 200; // Velocidad Y mínima para considerar una caída
+let minFallVelocity = 50; // Velocidad Y mínima para considerar una caída
 let wasFalling = false;
 let lastLandingTime = 0;
 const landingCooldown = 300; // ms entre animaciones de aterrizaje
 
 let stableGroundTime = 0;
-const STABLE_GROUND_THRESHOLD = 50; // ms que debe estar estable en el suelo
+const STABLE_GROUND_THRESHOLD = 50; // ms que debe estar en el suelo para considerarse estable
+const MIN_FALL_VELOCITY = 150; // Velocidad Y mínima para considerar caída
 let lastVelocityY = 0;
 
 let isLanding = false;
@@ -187,16 +188,14 @@ player.setDragX(500);
     });
 
 }
-
-
 function update() {
-    updateDebugInfo(); // Debug info
+    updateDebugInfo(); // Mostrar info de debug
 
-    const isOnFloor = checkStableGround();
+    const isOnFloor = checkStableGround(); // Ahora mucho más estable
     const acceleration = 800;
     const maxSpeed = 300;
 
-    // Detección de caída (velocidad Y positiva = cayendo)
+    // Detectar si está cayendo
     if (!isOnFloor && player.body.velocity.y > minFallVelocity) {
         wasFalling = true;
     }
@@ -227,47 +226,54 @@ function update() {
         wasInAir = true;
     }
 
-    // Lógica de animaciones
+    // Animaciones basadas en el estado
     if (!isOnFloor) {
         wasInAir = true;
-        stableGroundTime = 0;
 
         if (!isLanding) {
-            if (player.body.velocity.y < 0 && player.anims.currentAnim?.key !== 'jump') {
-                player.anims.play('jump', true);
-            } else if (player.body.velocity.y >= 0 && player.anims.currentAnim?.key !== 'fall') {
-                player.anims.play('fall', true);
-                if (player.body.velocity.y > minFallVelocity) {
-                    wasFalling = true;
+            if (player.body.velocity.y < 0) {
+                if (player.anims.currentAnim?.key !== 'jump') {
+                    player.anims.play('jump', true);
                 }
+            } else if (player.body.velocity.y > MIN_FALL_VELOCITY) {
+                if (player.anims.currentAnim?.key !== 'fall') {
+                    player.anims.play('fall', true);
+                }
+                wasFalling = true;
             }
         }
     } else {
-        if (wasFalling && stableGroundTime > STABLE_GROUND_THRESHOLD && !isLanding) {
+        if (wasFalling && !isLanding && stableGroundTime > STABLE_GROUND_THRESHOLD) {
             isLanding = true;
             wasFalling = false;
             player.anims.play('touchDown', true);
-            setTimeout(() => {
+            player.once('animationcomplete-touchDown', () => {
                 isLanding = false;
-            }, landingCooldown);
+                updateIdleRunAnimation();
+            });
         } else if (!isLanding && stableGroundTime > STABLE_GROUND_THRESHOLD) {
             updateIdleRunAnimation();
         }
     }
 }
 
+
+//funciones 
+let stableFrames = 0; // Cuenta de frames tocando el suelo
+const STABLE_FRAMES_THRESHOLD = 5; // Cuántos frames debe estar tocando el suelo
+
 function checkStableGround() {
     const currentFloorCheck = player.body.blocked.down || player.body.touching.down;
 
     if (currentFloorCheck) {
-        stableGroundTime += player.scene.game.loop.delta;
-
-        // Siempre devolveremos true si estamos tocando el suelo
-        return true;
+        stableFrames++;
+        stableGroundTime += player.scene.game.loop.delta; // <-- ¡Corrección importante!
     } else {
+        stableFrames = 0;
         stableGroundTime = 0;
-        return false;
     }
+
+    return stableFrames >= STABLE_FRAMES_THRESHOLD;
 }
 
 function updateDebugInfo() {
