@@ -4,18 +4,19 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // debug
         this.physics.world.createDebugGraphic();
+        this.physics.world.drawDebug = true;
         // Crear el generador de mundo
         this.worldGenerator = new WorldGenerator(this);
-        this.worldGenerator.setup();
+        this.worldGenerator.setup(); // Esto creará las plataformas iniciales
         
-        // Crear el jugador (gato)
-        this.player = new Player(this, 100, 450);
-        
+        // Luego crear al jugador
+        this.player = new Player(this, 250, 500); // Posición sobre la plataforma inicial
         // Configurar cámara para seguir al jugador
         this.cameras.main.setBounds(0, 0, this.worldGenerator.worldWidth, 600);
         this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
-        
+        this.cameras.main.setDeadzone(100, 50);  // Añadir deadzone
         // Establecer colisiones entre el jugador y las plataformas
         this.physics.add.collider(this.player.sprite, this.worldGenerator.getPlatforms());
         
@@ -48,6 +49,17 @@ class GameScene extends Phaser.Scene {
     }
 
     update(time, delta) {
+
+            // Verificar que el jugador y su sprite existan
+    if (!this.player || !this.player.sprite) return;
+    
+    // Actualizar el jugador
+    this.player.update(time, delta);
+    
+    // Actualizar el generador de mundo con verificación
+    if (this.worldGenerator && this.player.sprite.body) {
+        this.worldGenerator.update(this.player.sprite.x);
+    }
         // Actualizar el jugador
         this.player.update(time, delta);
         

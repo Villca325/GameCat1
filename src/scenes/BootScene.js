@@ -4,6 +4,12 @@ class BootScene extends Phaser.Scene {
     }
 
     preload() {
+        this.load.on('complete', () => {
+            console.log('Todos los assets cargados correctamente');
+        });
+        
+        // Cargar textura de plataforma primero
+        this.load.image('ground', 'assets/platform.png');
         // Aquí cargamos todos los assets
         this.load.image('sky', 'assets/Clouds1.png');
         this.load.image('ground', 'assets/platform.png');
