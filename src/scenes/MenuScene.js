@@ -8,7 +8,7 @@ class MenuScene extends Phaser.Scene {
         this.add.image(400, 300, 'sky').setScale(2);
 
         // Título del juego
-        this.add.text(400, 150, 'CAT ADVENTURE', {
+        this.add.text(400, 150, 'Gato Aventura', {
             font: '48px Arial',
             fill: '#ffffff',
             stroke: '#000000',
@@ -46,10 +46,12 @@ class MenuScene extends Phaser.Scene {
             this.scene.start('GameScene');
         });
 
-        // Mostrar controles
-        this.add.text(400, 450, 'Controles: Flechas para mover, Flecha arriba para saltar', {
+        // Mostrar mensaje
+        this.add.text(400, 450, 
+            'lorem ipsum dolor sit amet, consectetur adipiscing elit. Juego hecho para alguien...', 
+            {
             font: '16px Arial',
-            fill: '#ffffff'
+            fill: '#8D0AFC'
         }).setOrigin(0.5);
     }
 }

@@ -76,10 +76,13 @@ class GameScene extends Phaser.Scene {
         // Actualizar información de depuración
         this.updateDebugInfo();
         
+
+        
         // Comprobar si el jugador ha caído
-        if (this.player.sprite.y > this.cameras.main.height) {
+        if (this.player.sprite.y > this.cameras.main.height || this.player.sprite.y ==600)  {
             this.gameOver();
         }
+            
     }
     
     updateDebugInfo() {

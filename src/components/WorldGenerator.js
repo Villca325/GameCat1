@@ -7,19 +7,26 @@ class WorldGenerator {
         
         // Propiedades de generación
         this.lastPlatformX = 0;
-        this.generationDistance = 500;
+        this.generationDistance = 500;  
         this.worldWidth = 5000;
         this.screenWidth = scene.cameras.main.width;
         this.screenHeight = scene.cameras.main.height;
         
         // Configuración de las plataformas
         this.platformConfig = {
-            minGap: 100,
-            maxGap: 250,
-            minY: 150,
-            maxY: 550,
-            minWidth: 100,
-            maxWidth: 300,
+            // Distancia mínima horizontal entre el borde derecho de una plataforma y el borde izquierdo de la siguiente
+            minGap: 100,  
+            // Distancia máxima horizontal entre plataformas (afecta la dificultad de los saltos)
+            maxGap: 250,  
+            // Altura mínima en la que puede generarse una nueva plataforma (parte superior de la pantalla = 0)
+            minY: 350,    
+            // Altura máxima en la que puede generarse una nueva plataforma (más cerca del fondo de la pantalla)
+            maxY: 500,    
+            // Ancho mínimo que puede tener una plataforma (plataformas más cortas son más difíciles)
+            minWidth: 100, 
+            // Ancho máximo de una plataforma (plataformas grandes son más fáciles)
+            maxWidth: 300, 
+            // Tipos de plataformas disponibles. Aquí solo hay un tipo: 'ground', pero podrías agregar más tipos (como plataformas móviles, rompibles, etc.)
             types: ['ground']
         };
         
@@ -41,47 +48,47 @@ class WorldGenerator {
     
     // Crea las plataformas iniciales
     createInitialPlatforms() {
-        // Plataforma de inicio más grande y visible
-        let startPlatform = this.platforms.create(200, 568, 'ground');
-        startPlatform.setScale(2, 1).refreshBody();  // Asegurar escala correcta
+        // Crear la plataforma inicial
+        const startPlatform = this.platforms.create(200, 568, 'ground');
+        startPlatform.setDepth(1); //la plataforma por alguna razon se generaba por debajo del fondo
+        // Usa displayWidth/Height pero no setScale
         startPlatform.displayWidth = 400;
-        startPlatform.displayHeight = 64;  // Altura explícita
-        
+        startPlatform.displayHeight = 64;
+    
+        // Asegúrate de refrescar el cuerpo después de modificar dimensiones
+        startPlatform.refreshBody();
+    
         this.lastPlatformX = 400;
-        
-        // Generar plataformas iniciales más cerca
-        for (let i = 0; i < 5; i++) {
-            this.generateNextPlatform();
-        }
     }
+    
     // Genera una nueva plataforma basada en la última
-    generateNextPlatform() {
-        // Calcular posición
-        const gap = Phaser.Math.Between(this.platformConfig.minGap, this.platformConfig.maxGap);
-        const platformWidth = Phaser.Math.Between(this.platformConfig.minWidth, this.platformConfig.maxWidth);
-        const platformX = this.lastPlatformX + gap + (platformWidth / 2);
-        const platformY = Phaser.Math.Between(this.platformConfig.minY, this.platformConfig.maxY);
-        
-        // Crear plataforma con verificación de existencia
-        if (!this.platforms) return null;
-        
-        const platform = this.platforms.create(platformX, platformY, 'ground');
-        if (!platform) return null;
-        
-        platform.displayWidth = platformWidth;
-        platform.displayHeight = 32; // Altura fija
-        platform.refreshBody();
-        
-        // Actualizar posición de la última plataforma
-        this.lastPlatformX = platformX + (platformWidth / 2);
-        
-        // Extender el mundo si es necesario
-        if (this.lastPlatformX + 1000 > this.worldWidth) {
-            this.extendWorld();
-        }
-        
-        return platform;
+generateNextPlatform() {
+    // Calcular posición
+    const gap = Phaser.Math.Between(this.platformConfig.minGap, this.platformConfig.maxGap);
+    const platformWidth = Phaser.Math.Between(this.platformConfig.minWidth, this.platformConfig.maxWidth);
+    const platformX = this.lastPlatformX + gap + (platformWidth / 2);
+    const platformY = Phaser.Math.Between(this.platformConfig.minY, this.platformConfig.maxY);
+    
+    // Crear plataforma con verificación de existencia
+    if (!this.platforms) return null;
+    
+    const platform = this.platforms.create(platformX, platformY, 'ground');
+    if (!platform) return null;
+    
+    platform.displayWidth = platformWidth;
+    platform.displayHeight = 32; // Altura fija
+    platform.refreshBody();
+    
+    // Actualizar posición de la última plataforma
+    this.lastPlatformX = platformX + (platformWidth / 2);
+    
+    // Extender el mundo si es necesario
+    if (this.lastPlatformX + 1000 > this.worldWidth) {
+        this.extendWorld();
     }
+    
+    return platform;
+}
     // Extiende el tamaño del mundo del juego
     extendWorld() {
         this.worldWidth += 1600;
@@ -107,6 +114,7 @@ class WorldGenerator {
         const skyFar = this.scene.add.tileSprite(0, 0, this.screenWidth, this.screenHeight, 'sky')
             .setOrigin(0, 0)
             .setScrollFactor(0, 0);
+            skyFar.setScale(1.9); // Escalar el fondo para que ocupe toda la pantalla
         
         this.backgroundLayers.push({ sprite: skyFar, parallaxFactor: 0.1 });
         

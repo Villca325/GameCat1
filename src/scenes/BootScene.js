@@ -12,7 +12,7 @@ class BootScene extends Phaser.Scene {
         this.load.image('ground', 'assets/platform.png');
         // Aquí cargamos todos los assets
         this.load.image('sky', 'assets/Clouds1.png');
-        this.load.image('ground', 'assets/platform.png');
+  
 
         // Assets del gato
         this.load.spritesheet('cat_idle', 'assets/cat_white_idle.png', { frameWidth: 134.8, frameHeight: 95 });
