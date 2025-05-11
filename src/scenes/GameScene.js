@@ -1,12 +1,17 @@
 class GameScene extends Phaser.Scene {
+  
     constructor() {
         super({ key: 'GameScene' });
     }
 
     create() {
+    this.isGameOver = false;
+       
+    
         // debug
         this.physics.world.createDebugGraphic();
-        this.physics.world.drawDebug = true;
+        this.physics.world.drawDebug = false;
+   
         // Crear el generador de mundo
         this.worldGenerator = new WorldGenerator(this);
         this.worldGenerator.setup(); // Esto creará las plataformas iniciales
@@ -69,7 +74,7 @@ class GameScene extends Phaser.Scene {
         // Actualizar puntuación basada en la distancia
         if (this.player.sprite.x > this.highestX) {
             this.highestX = this.player.sprite.x;
-            this.score = Math.floor(this.highestX);
+            this.score = Math.floor(this.highestX)-250 ;
             this.scoreText.setText(`Score: ${this.score}`);
         }
         
@@ -79,8 +84,10 @@ class GameScene extends Phaser.Scene {
 
         
         // Comprobar si el jugador ha caído
-        if (this.player.sprite.y > this.cameras.main.height || this.player.sprite.y ==600)  {
+        if ( this.player.sprite.y >=599 && !this.isGameOver)  {
+           console.log('Jugador cayó. Activando gameOver');
             this.gameOver();
+              this.isGameOver = true;
         }
             
     }
@@ -99,37 +106,116 @@ class GameScene extends Phaser.Scene {
             ]);
         }
     }
+gameOver() {
+    // Detener seguimiento y física
+    this.cameras.main.stopFollow();
+    this.physics.pause();
     
-    gameOver() {
-        // Puedes mostrar un texto de fin de juego
-        this.add.text(this.cameras.main.worldView.centerX, 300, 'GAME OVER', {
-            fontSize: '64px',
-            fill: '#fff',
-            stroke: '#f00',
-            strokeThickness: 8
-        }).setOrigin(0.5).setScrollFactor(0);
+    // Aplicar tinte rojo al jugador
+    this.player.sprite.setTint(0xff0000);
+    
+    // Efecto de sacudida de cámara
+    this.cameras.main.shake(200, 0.01);
+    
+    // SOLUCIÓN: Crear una escena UI superpuesta para la pantalla de Game Over
+    // En lugar de agregar elementos a la escena actual, creamos una nueva escena UI
+    
+    // Primero, asegurarnos de que la escena de Game Over existe y está configurada correctamente
+    if (!this.scene.get('GameOverScene')) {
+        // Definir la escena GameOver
+        class GameOverScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'GameOverScene' });
+                this.parentScene = null;
+                this.score = 0;
+            }
+            
+            init(data) {
+                this.parentScene = data.parentScene;
+                this.score = data.score;
+            }
+            
+            create() {
+                const centerX = this.cameras.main.width / 2;
+                const centerY = this.cameras.main.height / 2;
+                
+                // Añadir un fondo semi-transparente
+                const overlay = this.add.rectangle(
+                    0, 0, 
+                    this.cameras.main.width * 2, 
+                    this.cameras.main.height * 2, 
+                    0x000000, 0.7
+                ).setOrigin(0);
+                
+                // Crear el contenedor de Game Over
+                const gameOverContainer = this.add.container(centerX, centerY);
+                
+                // Añadir elementos al contenedor
+                const gameOverText = this.add.text(0, 0, 'GAME OVER', {
+                    fontSize: '64px',
+                    fill: '#fff',
+                    stroke: '#f00',
+                    strokeThickness: 8
+                }).setOrigin(0.5);
+                
+                const scoreText = this.add.text(0, 80, `Score: ${this.score}`, {
+                    fontSize: '32px',
+                    fill: '#fff'
+                }).setOrigin(0.5);
+                
+                const restartButton = this.add.text(0, 160, 'Reintentar', {
+                    fontSize: '28px',
+                    fill: '#fff',
+                    backgroundColor: '#d34545',
+                    padding: { x: 20, y: 10 }
+                }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+                
+                gameOverContainer.add([gameOverText, scoreText, restartButton]);
+                
+                // Interacciones del botón
+                restartButton.on('pointerover', () => restartButton.setStyle({ 
+                    fill: '#ff0',
+                    backgroundColor: '#d34545',
+                    padding: { x: 20, y: 10 } 
+                }));
+                
+                restartButton.on('pointerout', () => restartButton.setStyle({ 
+                    fill: '#fff',
+                    backgroundColor: '#d34545',
+                    padding: { x: 20, y: 10 } 
+                }));
+                
+                restartButton.on('pointerdown', () => {
+                    this.cameras.main.fadeOut(300, 0, 0, 0);
+                    this.time.delayedCall(300, () => {
+                        // Cerrar esta escena
+                        this.scene.stop();
+                        // Reiniciar la escena principal
+                        this.parentScene.scene.restart();
+                    });
+                });
+                
+                // Animación de entrada
+                gameOverContainer.setAlpha(0);
+                gameOverContainer.y += 30; // Posición inicial para la animación
+                this.tweens.add({
+                    targets: gameOverContainer,
+                    y: gameOverContainer.y - 30,
+                    alpha: 1,
+                    duration: 500,
+                    ease: 'Back.out'
+                });
+            }
+        }
         
-        this.add.text(this.cameras.main.worldView.centerX, 380, `Score: ${this.score}`, {
-            fontSize: '32px',
-            fill: '#fff',
-            stroke: '#000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setScrollFactor(0);
-        
-        // Botón para volver a jugar
-        const restartButton = this.add.text(this.cameras.main.worldView.centerX, 450, 'Jugar de nuevo', {
-            fontSize: '24px',
-            fill: '#fff',
-            backgroundColor: '#4a4a4a',
-            padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setScrollFactor(0).setInteractive();
-        
-        restartButton.on('pointerdown', () => {
-            this.scene.restart();
-        });
-        
-        // Detener el juego
-        this.physics.pause();
-        this.player.sprite.setTint(0xff0000);
+        // Registrar la escena si aún no existe
+        this.scene.add('GameOverScene', GameOverScene, false);
     }
+    
+    // Iniciar la escena de Game Over
+    this.scene.launch('GameOverScene', { 
+        parentScene: this,
+        score: this.score
+    });
+}
 }

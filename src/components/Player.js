@@ -32,6 +32,9 @@ class Player {
         this.sprite.body.setMaxVelocity(300, 500);
         this.sprite.setVelocityX(0);
         this.sprite.setDragX(500);
+
+        // Configurar la gravedad base
+        this.sprite.body.setGravityY(1500);
         
         // Variables para el control de animaciones
         this.minFallVelocity = 50;
@@ -45,11 +48,39 @@ class Player {
         this.stableFrames = 0;
         this.STABLE_FRAMES_THRESHOLD = 5;
         
+        // Variables para Coyote Time
+        this.coyoteTime = 150; // milisegundos que el jugador puede saltar después de caer
+        this.coyoteTimeCounter = 0;
+        this.hasLeftGround = false;
+        this.canJump = true; // Flag para controlar si puede saltar
+        
+        // Variables para salto variable
+        this.jumpVelocity = -350;
+        this.jumpTime = 0;
+        this.maxJumpTime = 900; // tiempo máximo que se puede mantener el salto (ms)
+        this.minJumpVelocity = -150; // velocidad mínima para un "tap jump"
+        this.isJumping = false;
+        this.jumpReleased = true;
+        this.gravity = 1000; // aceleración de caída normal
+        this.fallGravity = 1000; // aceleración de caída rápida (cuando se suelta el botón)
+        
+        // Buffer de entrada para salto
+        this.jumpBuffer = 375; // milisegundos para recordar la pulsación de salto
+        this.jumpBufferCounter = 0;
+        
         // Crear animaciones
         this.createAnimations();
         
         // Controles
         this.cursors = scene.input.keyboard.createCursorKeys();
+        
+        // Información de debug
+        this.debug = {
+            isOnFloor: false,
+            canJump: true,
+            coyoteTimeCounter: 0,
+            jumpBufferCounter: 0
+        };
     }
     
     createAnimations() {
@@ -105,10 +136,17 @@ class Player {
     }
     
     update(time, delta) {
+        // Convertir delta a segundos para cálculos de física
+        const dt = delta / 1000;
+        
         // Verificar si está en el suelo de manera estable
         const isOnFloor = this.checkStableGround();
         const acceleration = 800;
         const maxSpeed = 300;
+        
+        // Actualizar Coyote Time y Jump Buffer
+        this.updateCoyoteTime(isOnFloor, delta);
+        this.updateJumpBuffer(delta);
         
         // Detectar si está cayendo
         if (!isOnFloor && this.sprite.body.velocity.y > this.minFallVelocity) {
@@ -134,11 +172,56 @@ class Player {
             this.sprite.setVelocityX(maxSpeed * Math.sign(this.sprite.body.velocity.x));
         }
         
-        // Salto
-        if (this.cursors.up.isDown && isOnFloor && !this.isLanding) {
-            this.sprite.setVelocityY(-350);
-            this.sprite.anims.play('jump', true);
-            this.wasInAir = true;
+        // Detectar cuando se presiona y se suelta el botón de salto
+        const justPressedJump = Phaser.Input.Keyboard.JustDown(this.cursors.up);
+        const justReleasedJump = Phaser.Input.Keyboard.JustUp(this.cursors.up);
+        
+        // Agregar pulsación al buffer de salto
+        if (justPressedJump) {
+            this.jumpBufferCounter = this.jumpBuffer;
+        }
+        
+        // Intentar saltar si hay buffer de salto y puede saltar
+        if (this.jumpBufferCounter > 0 && (isOnFloor || this.canCoyoteJump()) && !this.isLanding) {
+            this.startJump();
+            this.jumpBufferCounter = 0; // Consumir el buffer
+        }
+        
+        // Controlar la duración del salto
+        if (this.isJumping) {
+            if (this.cursors.up.isDown && this.jumpTime < this.maxJumpTime) {
+                // Mantener la velocidad de salto mientras se presiona
+                this.jumpTime += delta;
+                
+                // Aplicar la velocidad de salto como una fuerza constante
+                this.sprite.setVelocityY(this.jumpVelocity);
+            } else {
+                // Terminar el salto si se suelta el botón o se excede el tiempo máximo
+                this.isJumping = false;
+                
+                // Si estamos en fase ascendente y soltamos el botón, aplicar el minJumpVelocity
+                if (this.sprite.body.velocity.y < 0 && this.sprite.body.velocity.y < this.minJumpVelocity) {
+                    this.sprite.body.velocity.y = this.minJumpVelocity;
+                }
+            }
+        }
+        
+        // Aplicar gravedad variable
+        if (!isOnFloor) {
+            // Gravedad normal durante el salto, gravedad aumentada durante la caída
+            if (this.sprite.body.velocity.y > 0 || !this.cursors.up.isDown) {
+                this.sprite.body.setGravityY(this.fallGravity);
+            } else {
+                this.sprite.body.setGravityY(this.gravity);
+            }
+        } else {
+            // Resetear la capacidad de saltar cuando toca el suelo
+            this.canJump = true;
+        }
+        
+        // Verificar si se soltó el botón de salto
+        if (justReleasedJump) {
+            this.jumpReleased = true;
         }
         
         // Gestión de animaciones
@@ -147,12 +230,66 @@ class Player {
         // Actualizar el tiempo de contacto con el suelo
         if (isOnFloor) {
             this.stableGroundTime += delta;
+            this.hasLeftGround = false;  // Resetear la bandera cuando toca suelo
         } else {
             this.stableGroundTime = 0;
         }
         
         // Actualizar la última velocidad Y para el próximo frame
         this.lastVelocityY = this.sprite.body.velocity.y;
+        
+        // Actualizar información de debug
+        this.updateDebugInfo(isOnFloor);
+    }
+    
+    updateDebugInfo(isOnFloor) {
+        this.debug.isOnFloor = isOnFloor;
+        this.debug.canJump = this.canJump;
+        this.debug.coyoteTimeCounter = this.coyoteTimeCounter;
+        this.debug.jumpBufferCounter = this.jumpBufferCounter;
+    }
+    
+    updateCoyoteTime(isOnFloor, delta) {
+        // Si estaba en el suelo y ahora está en el aire, comenzar Coyote Time
+        if (isOnFloor) {
+            this.coyoteTimeCounter = this.coyoteTime;
+        } else {
+            if (!this.hasLeftGround) {
+                this.hasLeftGround = true;
+            }
+            
+            // Reducir el contador de Coyote Time solo si ha dejado el suelo
+            if (this.hasLeftGround && this.coyoteTimeCounter > 0) {
+                this.coyoteTimeCounter -= delta;
+            }
+        }
+    }
+    
+    updateJumpBuffer(delta) {
+        // Reducir el contador de buffer de salto
+        if (this.jumpBufferCounter > 0) {
+            this.jumpBufferCounter -= delta;
+        }
+    }
+    
+    canCoyoteJump() {
+        // Puede saltar si hay tiempo de coyote disponible
+        return this.coyoteTimeCounter > 0 && this.hasLeftGround && this.canJump;
+    }
+    
+    startJump() {
+        // Evitar saltos múltiples
+        if (!this.canJump) return;
+        
+        this.isJumping = true;
+        this.jumpTime = 0;
+        this.canJump = false; // Evitar saltos múltiples hasta tocar el suelo
+        this.sprite.setVelocityY(this.jumpVelocity);
+        this.sprite.anims.play('jump', true);
+        this.wasInAir = true;
+        
+        // Resetear el contador de coyote time
+        this.coyoteTimeCounter = 0;
     }
     
     updateAnimations(isOnFloor) {
@@ -220,5 +357,17 @@ class Player {
             x: this.sprite.x,
             y: this.sprite.y
         };
+    }
+    
+    // Método para depuración (opcional)
+    showDebugInfo() {
+        const debugInfo = [
+            `En suelo: ${this.debug.isOnFloor}`,
+            `Puede saltar: ${this.debug.canJump}`,
+            `Coyote Time: ${Math.floor(this.debug.coyoteTimeCounter)}ms`,
+            `Jump Buffer: ${Math.floor(this.debug.jumpBufferCounter)}ms`
+        ];
+        
+        return debugInfo.join('\n');
     }
 }

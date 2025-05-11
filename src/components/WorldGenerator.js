@@ -52,8 +52,8 @@ class WorldGenerator {
         const startPlatform = this.platforms.create(200, 568, 'ground');
         startPlatform.setDepth(1); //la plataforma por alguna razon se generaba por debajo del fondo
         // Usa displayWidth/Height pero no setScale
-        startPlatform.displayWidth = 400;
-        startPlatform.displayHeight = 64;
+        startPlatform.displayWidth = 520;
+        startPlatform.displayHeight = 140;
     
         // Asegúrate de refrescar el cuerpo después de modificar dimensiones
         startPlatform.refreshBody();
