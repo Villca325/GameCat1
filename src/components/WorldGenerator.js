@@ -21,7 +21,7 @@ class WorldGenerator {
             // Altura mínima en la que puede generarse una nueva plataforma (parte superior de la pantalla = 0)
             minY: 350,    
             // Altura máxima en la que puede generarse una nueva plataforma (más cerca del fondo de la pantalla)
-            maxY: 500,    
+            maxY: 400,    
             // Ancho mínimo que puede tener una plataforma (plataformas más cortas son más difíciles)
             minWidth: 100, 
             // Ancho máximo de una plataforma (plataformas grandes son más fáciles)
@@ -102,24 +102,55 @@ generateNextPlatform() {
     }
     
     // Crea el fondo con efecto parallax
-    createParallaxBackground() {
-        // Eliminar el fondo existente
-        this.scene.children.list.forEach(child => {
-            if (child.texture && child.texture.key === 'sky') {
-                child.destroy();
-            }
-        });
-        
-        // Crear capas de fondo con diferentes velocidades
-        const skyFar = this.scene.add.tileSprite(0, 0, this.screenWidth, this.screenHeight, 'sky')
-            .setOrigin(0, 0)
-            .setScrollFactor(0, 0);
-            skyFar.setScale(1.9); // Escalar el fondo para que ocupe toda la pantalla
-        
-        this.backgroundLayers.push({ sprite: skyFar, parallaxFactor: 0.1 });
-        
-        // Puedes añadir más capas de fondo con diferentes texturas y factores
-    }
+  // Crea el fondo con efecto parallax con 4 capas de profundidad
+createParallaxBackground() {
+    // Eliminar el fondo existente
+    this.scene.children.list.forEach(child => {
+        if (child.texture && (child.texture.key === 'sky' || child.texture.key.startsWith('background'))) {
+            child.destroy();
+        }
+    });
+    
+    // Limpiar el array de capas de fondo
+    this.backgroundLayers = [];
+    
+    // Crear 4 capas de fondo con diferentes velocidades
+    // Capa 1: Cielo lejano (movimiento más lento)
+    const background1 = this.scene.add.tileSprite(0, 0, this.screenWidth, this.screenHeight, 'background1')
+        .setOrigin(0, 0)
+        .setScrollFactor(0, 0)
+        .setDepth(-10);
+    background1.setScale(1.9);
+    this.backgroundLayers.push({ sprite: background1, parallaxFactor: 0.01 });
+    
+    // Capa 2: Montañas lejanas
+    // Nota: Asegúrate de tener la textura 'background1' cargada en tu escena
+    const background2 = this.scene.add.tileSprite(0, 0, this.screenWidth, this.screenHeight, 'background2')
+        .setOrigin(0, 0)
+        .setScrollFactor(0, 0)
+        .setDepth(-9);
+    background2.setScale(1.9);
+    this.backgroundLayers.push({ sprite: background2, parallaxFactor: 0.05 });
+    
+    // Capa 3: Colinas intermedias
+    // Nota: Asegúrate de tener la textura 'background2' cargada en tu escena
+    const background3 = this.scene.add.tileSprite(0, 0, this.screenWidth, this.screenHeight, 'background3')
+        .setOrigin(0, 0)
+        .setScrollFactor(0, 0)
+        .setDepth(-8);
+    background3.setScale(1.9);
+    this.backgroundLayers.push({ sprite: background3, parallaxFactor: 0.1 });
+    
+    // Capa 4: Elementos cercanos (árboles, edificios, etc.)
+    // Nota: Asegúrate de tener la textura 'background3' cargada en tu escena
+    const background4 = this.scene.add.tileSprite(0, 0, this.screenWidth, this.screenHeight, 'background4')
+        .setOrigin(0, 0)
+        .setScrollFactor(0, 0)
+        .setDepth(-7);
+    background4.setScale(1.9);
+    this.backgroundLayers.push({ sprite: background4, parallaxFactor: 0.2 });
+    
+}
     
     // Extiende el fondo cuando crece el mundo
     extendBackground() {
@@ -148,12 +179,14 @@ generateNextPlatform() {
         this.recycleOldPlatforms();
     }
     // Actualiza el efecto parallax
-    updateParallax() {
-        this.backgroundLayers.forEach(layer => {
-            layer.sprite.tilePositionX = this.scene.cameras.main.scrollX * layer.parallaxFactor;
-        });
-    }
+  updateParallax() {
+    const cameraScrollX = this.scene.cameras.main.scrollX;
     
+    this.backgroundLayers.forEach(layer => {
+        // Actualiza la posición horizontal basada en el factor de parallax
+        layer.sprite.tilePositionX = cameraScrollX * layer.parallaxFactor;
+    });
+}
     // Elimina plataformas que ya no son visibles
     recycleOldPlatforms() {
         // Crear una copia del array de children para evitar problemas durante la iteración

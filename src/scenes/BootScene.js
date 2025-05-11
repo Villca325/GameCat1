@@ -10,8 +10,14 @@ class BootScene extends Phaser.Scene {
         
         // Cargar textura de plataforma primero
         this.load.image('ground', 'assets/platform.png');
+        
         // Aquí cargamos todos los assets
         this.load.image('sky', 'assets/Clouds1.png');
+
+        this.load.image('background1', 'assets/Clouds 1/1.png');
+        this.load.image('background2', 'assets/Clouds 1/2.png');
+        this.load.image('background3', 'assets/Clouds 1/3.png');
+        this.load.image('background4', 'assets/Clouds 1/4.png');
   
 
         // Assets del gato

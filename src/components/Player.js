@@ -49,25 +49,29 @@ class Player {
         this.STABLE_FRAMES_THRESHOLD = 5;
         
         // Variables para Coyote Time
-        this.coyoteTime = 150; // milisegundos que el jugador puede saltar después de caer
+        this.coyoteTime = 180; // milisegundos que el jugador puede saltar después de caer
         this.coyoteTimeCounter = 0;
         this.hasLeftGround = false;
-        this.canJump = true; // Flag para controlar si puede saltar
+        this._canJump = true; // Flag para controlar si puede saltar
         
         // Variables para salto variable
         this.jumpVelocity = -350;
         this.jumpTime = 0;
         this.maxJumpTime = 900; // tiempo máximo que se puede mantener el salto (ms)
         this.minJumpVelocity = -150; // velocidad mínima para un "tap jump"
-        this.isJumping = false;
+        this._isJumping = false;
         this.jumpReleased = true;
-        this.gravity = 1000; // aceleración de caída normal
-        this.fallGravity = 1000; // aceleración de caída rápida (cuando se suelta el botón)
+        this.gravity = 900; // aceleración de caída normal
+        this.fallGravity = 900; // aceleración de caída rápida (cuando se suelta el botón)
         
+        // Variables para movimiento
+        this._acceleration = 800;
+        this._maxSpeed = 300;
         // Buffer de entrada para salto
-        this.jumpBuffer = 375; // milisegundos para recordar la pulsación de salto
+        this.jumpBuffer = 400; // milisegundos para recordar la pulsación de salto
         this.jumpBufferCounter = 0;
         
+
         // Crear animaciones
         this.createAnimations();
         
@@ -141,8 +145,7 @@ class Player {
         
         // Verificar si está en el suelo de manera estable
         const isOnFloor = this.checkStableGround();
-        const acceleration = 800;
-        const maxSpeed = 300;
+   
         
         // Actualizar Coyote Time y Jump Buffer
         this.updateCoyoteTime(isOnFloor, delta);
@@ -155,10 +158,10 @@ class Player {
         
         // Movimiento horizontal
         if (this.cursors.left.isDown) {
-            this.sprite.setAccelerationX(-acceleration);
+            this.sprite.setAccelerationX(-this.acceleration);
             this.sprite.flipCharacter(true);
         } else if (this.cursors.right.isDown) {
-            this.sprite.setAccelerationX(acceleration);
+            this.sprite.setAccelerationX(this.acceleration);
             this.sprite.flipCharacter(false);
         } else {
             this.sprite.setAccelerationX(0);
@@ -168,8 +171,8 @@ class Player {
         }
         
         // Límite de velocidad
-        if (Math.abs(this.sprite.body.velocity.x) > maxSpeed) {
-            this.sprite.setVelocityX(maxSpeed * Math.sign(this.sprite.body.velocity.x));
+        if (Math.abs(this.sprite.body.velocity.x) > this.maxSpeed) {
+            this.sprite.setVelocityX(this.maxSpeed * Math.sign(this.sprite.body.velocity.x));
         }
         
         // Detectar cuando se presiona y se suelta el botón de salto
@@ -350,14 +353,55 @@ class Player {
         
         return this.stableFrames >= this.STABLE_FRAMES_THRESHOLD;
     }
-    
-    // Método para obtener la posición actual
-    getPosition() {
+        // GETTERS
+    get position() {
         return {
             x: this.sprite.x,
             y: this.sprite.y
         };
     }
+
+    get velocity() {
+        return {
+            x: this.sprite.body.velocity.x,
+            y: this.sprite.body.velocity.y
+        };
+    }
+
+    get isOnGround() {
+        return this.checkStableGround();
+    }
+
+    get acceleration() {
+        return this._acceleration;
+    }
+
+    get maxSpeed() {
+        return this._maxSpeed;
+    }
+
+    // SETTERS (como propiedades)
+    set position({x, y}) {
+        this.sprite.setPosition(x, y);
+    }
+
+    set velocity({x, y}) {
+        if (x !== undefined) this.sprite.setVelocityX(x);
+        if (y !== undefined) this.sprite.setVelocityY(y);
+    }
+
+    set acceleration(value) {
+        if (typeof value === 'number' && value >= 0) {
+            this._acceleration = value;
+        }
+    }
+
+    set maxSpeed(value) {
+        if (typeof value === 'number' && value > 0) {
+            this._maxSpeed = value;
+        }
+    }
+
     
     // Método para depuración (opcional)
     showDebugInfo() {
