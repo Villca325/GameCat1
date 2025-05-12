@@ -10,12 +10,25 @@ class GameScene extends Phaser.Scene {
     this.physics.world.createDebugGraphic();
     this.physics.world.drawDebug = false;
 
+    //musica y sonido
+this.music = this.sound.add('music1', {
+    volume: 1,
+    loop: true
+});
+this.music.play();
+
+    this.meow1=this.sound.add("meow1", {
+      volume: 0.1,
+      loop: false,
+    });
+
+
     // Crear el generador de mundo
     this.worldGenerator = new WorldGenerator(this);
     this.worldGenerator.setup(); // Esto creará las plataformas iniciales
 
     // Luego crear al jugador
-    this.player = new Player(this, 250, 500); // Posición sobre la plataforma inicial
+    this.player = new Player(this, 250, 400); // Posición sobre la plataforma inicial
     // Configurar cámara para seguir al jugador
     this.cameras.main.setBounds(0, 0, this.worldGenerator.worldWidth, 600);
     //no seguir al jugador  this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
@@ -163,7 +176,7 @@ class GameScene extends Phaser.Scene {
     // Detener seguimiento y física
     this.cameraSpeed = 0;
     this.maxCameraSpeed = 0;
-
+    this.meow1.play();
     this.cameras.main.stopFollow();
     this.physics.pause();
 
@@ -172,7 +185,10 @@ class GameScene extends Phaser.Scene {
 
     // Efecto de sacudida de cámara
     this.cameras.main.shake(200, 0.01);
-
+    //apagar musica si GameOver musica
+    if (this.music && this.music.isPlaying) {
+    this.music.stop();
+    }
     // SOLUCIÓN: Crear una escena UI superpuesta para la pantalla de Game Over
     // En lugar de agregar elementos a la escena actual, creamos una nueva escena UI
 

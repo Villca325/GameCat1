@@ -48,7 +48,7 @@ class MenuScene extends Phaser.Scene {
 
         // Mostrar mensaje
         this.add.text(400, 450, 
-            'lorem ipsum dolor sit amet, consectetur adipiscing elit. Juego hecho para alguien... \n controla con las flechas' , 
+            'lorem ipsum dolor sit amet, consectetur adipiscing elit. Juego hecho para alguien... \n controla con las flechas, preciona "D" para Debug' , 
             {
             font: '16px Arial',
             fill: '#8D0AFC',

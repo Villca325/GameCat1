@@ -25,6 +25,11 @@ class BootScene extends Phaser.Scene {
         this.load.spritesheet('cat_run', 'assets/cat_white_run.png', { frameWidth: 135, frameHeight: 95 });
         this.load.spritesheet('cat_jump', 'assets/cat_white_jump.png', { frameWidth: 130, frameHeight: 95 });
 
+        // Cargar sonidos
+        this.load.audio('music1', 'assets/music-loop1.mp3');
+        this.load.audio('meow1','assets/cat-meow1.wav');
+        
+        
         // Aquí puedes añadir una barra de progreso de carga si quieres
         const loadingBar = this.add.graphics();
         const loadingText = this.add.text(400, 300, 'Cargando...', { 
