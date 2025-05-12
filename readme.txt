@@ -1,4 +1,4 @@
-Vamos a analizar el flujo del código de la versión funcional anterior, desglosando cómo interactúan los componentes clave:
+Mi primer proyecto con phaser
 
 ### Diagrama de Flujo General:
 ```
@@ -26,7 +26,7 @@ BootScene (precarga) → MenuScene → GameScene → [Player + WorldGenerator]
 **Flujo en create()**:
 ```javascript
 1. Crea WorldGenerator
-   → Genera plataformas iniciales (1 fija + 5 procedurales)
+   → Genera plataformas iniciales (1 fija después procedurales)
    → Configura límites del mundo
 
 2. Crea Player
@@ -50,13 +50,13 @@ BootScene (precarga) → MenuScene → GameScene → [Player + WorldGenerator]
 2. Actualiza WorldGenerator:
    → Genera nuevas plataformas cuando el jugador avanza
    → Elimina plataformas fuera de pantalla
-   → Extiende el mundo si es necesario
+   → Extiende el mundo si es necesario(no se elimina el mundo que queda atras, ineficiente)
 
 3. Actualiza puntuación:
-   → Basada en distancia recorrida (eje X)
+   → Basada en distancia recorrida (es el eje -250)
 
 4. Verifica Game Over:
-   → Si el jugador cae por debajo de la pantalla
+   → Si el jugador cae (posición <=599)
 ```
 
 ### 4. Player.js - Lógica del Jugador
@@ -115,36 +115,3 @@ Aplica gravedad y restricciones →
 Player.checkStableGround() verifica si está "firmemente" en suelo
 ```
 
-### Errores Corregidos en la Versión Funcional:
-1. **Problema de plataformas invisibles**:
-   - Solución: Asegurar `refreshBody()` en plataformas estáticas
-   ```javascript
-   platform.setDisplaySize(width, height);
-   platform.refreshBody();
-   ```
-
-2. **Juego se detenía ~900 puntos**:
-   - Solución: Mejor gestión de `lastPlatformX` y generación anticipada
-   ```javascript
-   if (playerX > lastPlatformX - generationDistance) {
-       generateNextPlatform();
-   }
-   ```
-
-3. **Error en recycleOldPlatforms()**:
-   - Solución: Verificar existencia de plataformas antes de acceder
-   ```javascript
-   platforms.children.iterate(platform => {
-       if (platform.active) {
-           platform.destroy();
-       }
-   });
-   ```
-
-Este flujo asegura:
-- Generación procedural suave
-- Física consistente
-- Gestión de memoria adecuada (destrucción de plataformas lejanas)
-- Transiciones estables entre estados del jugador
-
-¿Te gustaría que profundice en algún componente específico del flujo?
